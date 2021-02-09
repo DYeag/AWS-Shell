@@ -42,9 +42,14 @@
             <Command Description="Create Image of instance and return the new image ami." DisplayName="Create New Image" Name="create_app_image" Tags="remote_connectivity,allow_unreserved,allow_shared" Visibility="AdminOnly">
                 <Parameters>
                     <Parameter DefaultValue="False" Description="Delete Old AMI?" DisplayName="Delete Old AMI?" Mandatory="True" Name="delete_old_image" Type="String" />
+                    <Parameter DefaultValue="" Description="App Template Name" DisplayName="App template Name" Mandatory="True" Name="app_template_name" Type="String" />
                 </Parameters>
             </Command>
-            <Command Description="Return id of the 2nd latest image for App making the call." DisplayName="Revert Image" Name="revert_app_image" Tags="remote_connectivity,allow_unreserved,allow_shared" Visibility="AdminOnly"/>
+            <Command Description="Return id of the 2nd latest image for App making the call." DisplayName="Revert Image" Name="revert_app_image" Tags="remote_connectivity,allow_unreserved,allow_shared" Visibility="AdminOnly">
+                <Parameters>
+                    <Parameter DefaultValue="" Description="App Template Name" DisplayName="App template Name" Mandatory="True" Name="app_template_name" Type="String" />
+                </Parameters>
+            </Command>
             <Command Description="" DisplayName="Assign IPv4 Addresses" EnableCancellation="false" Name="assign_additional_private_ipv4s" Tags="remote_connectivity">
                 <Parameters>
                     <Parameter DefaultValue="" Description="Please enter vnic id" DisplayName="Vnic ID" Mandatory="False" Name="vnic_id" Type="String" />
