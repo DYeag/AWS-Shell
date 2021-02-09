@@ -482,7 +482,7 @@ class AWSShell(object):
                                                   snapshot_name=snapshot_name,
                                                   tags=tags)
 
-    def create_app_image(self, context, cancellation_context, delete_old_image):
+    def create_app_image(self, context, cancellation_context, delete_old_image, app_template_name):
         """
         :param context:
         :param cancellation_context:
@@ -507,7 +507,7 @@ class AWSShell(object):
                                                     no_reboot=True)
 
             # delete 2nd from most recent image, will have tags: AppTemplateName and Revert
-            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [AppName]},
+            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]},
                                                                                   {'Name': 'tag:Revert', 'Values': ['True']}])
 
             if delete_old_image:
@@ -528,7 +528,7 @@ class AWSShell(object):
                 Tags=[
                     {
                         'Key': 'AppTemplateName',
-                        'Value': AppName,
+                        'Value': app_template_name,
                     },
                 ],
             )
@@ -546,7 +546,7 @@ class AWSShell(object):
 
             return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
 
-    def revert_app_image(self, context, cancellation_context):
+    def revert_app_image(self, context, cancellation_context, app_template_name):
         """
         :param context:
         :param cancellation_context:
@@ -563,7 +563,7 @@ class AWSShell(object):
             instance_ami_id = self.instance_service.get_instance_by_id(shell_context.aws_api.ec2_session,
                                                                        data_holder.vmdetails.uid).image_id
 
-            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [AppName]},
+            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]},
                                                                                   {'Name': 'tag:Revert', 'Values': ['True']}])
             if len(response['Images']) == 0:
                 raise Exception('No Revert image found.')
@@ -577,7 +577,7 @@ class AWSShell(object):
                     Tags=[
                         {
                             'Key': 'AppTemplateName',
-                            'Value': AppName,
+                            'Value': app_template_name,
                         },
                     ],
                 )
