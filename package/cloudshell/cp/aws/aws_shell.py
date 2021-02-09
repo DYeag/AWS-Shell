@@ -489,7 +489,7 @@ class AWSShell(object):
         :return:
         """
         with AwsShellContext(context=context, aws_session_manager=self.aws_session_manager) as shell_context:
-            shell_context.logger.info('Save Snapshot')
+            shell_context.logger.info('Create App Image')
 
             resource = context.remote_endpoints[0]
 
@@ -506,14 +506,46 @@ class AWSShell(object):
                                                     snapshot_prefix="",
                                                     no_reboot=True)
 
+            # delete 2nd from most recent image, will have tags: AppTemplateName and Revert
+            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [AppName]},
+                                                                                  {'Name': 'tag:Revert', 'Values': ['True']}])
+
             if delete_old_image:
-                try:
-                    self.delete_ami_operation.delete_ami(logger=shell_context.logger,
-                                                         ec2_session=shell_context.aws_api.ec2_session,
-                                                         instance_ami_id=instance_ami_id)
-                except Exception as e:
-                    shell_context.logger.warning("Failed to delete old AMI: " + e.message)
-                    shell_context.logger.exception()
+                for image in response['Images']:
+                    try:
+                        self.delete_ami_operation.delete_ami(logger=shell_context.logger,
+                                                             ec2_session=shell_context.aws_api.ec2_session,
+                                                             instance_ami_id=image['ImageId'])
+                    except Exception as e:
+                        shell_context.logger.warning("Failed to delete old AMI: " + e.message)
+                        shell_context.logger.exception()
+
+            # add tag for app template name
+            shell_context.aws_api.ec2_session.create_tags(
+                Resources=[
+                    image_id, instance_ami_id,
+                ],
+                Tags=[
+                    {
+                        'Key': 'AppTemplateName',
+                        'Value': AppName,
+                    },
+                ],
+            )
+            shell_context.aws_api.ec2_session.create_tags(
+                Resources=[
+                    instance_ami_id,
+                ],
+                Tags=[
+                    {
+                        'Key': 'Revert',
+                        'Value': 'True',
+                    },
+                ],
+            )
+
+            return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
+
 
             return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
 
