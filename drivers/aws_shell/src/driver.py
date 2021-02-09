@@ -104,11 +104,11 @@ class AWSShellDriver(ResourceDriverInterface):
     def AddCustomTags(self, context, request, ports):
         return self.aws_shell.add_custom_tags(context, request)
 
-    def create_app_image(self, context, cancellation_context, ports, delete_old_image='False'):
-        return self.aws_shell.create_app_image(context, cancellation_context, delete_old_image == 'True')
+    def create_app_image(self, context, cancellation_context, ports, delete_old_image='False', app_template_name=''):
+        return self.aws_shell.create_app_image(context, cancellation_context, delete_old_image == 'True', app_template_name)
 
-    def revert_app_image(self, context, cancellation_context, ports):
-        return self.aws_shell.revert_app_image(context, cancellation_context)
+    def revert_app_image(self, context, cancellation_context, ports, app_template_name=''):
+        return self.aws_shell.revert_app_image(context, cancellation_context, app_template_name)
 
     # def remote_save_snapshot(self, context, cancellation_context, snapshot_prefix, ports):
     #     return self.aws_shell.remote_save_snapshot(context, cancellation_context, snapshot_prefix)
