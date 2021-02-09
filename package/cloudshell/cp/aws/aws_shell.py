@@ -546,6 +546,63 @@ class AWSShell(object):
 
             return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
 
+    def revert_app_image(self, context, cancellation_context):
+        """
+        :param context:
+        :param cancellation_context:
+        :return:
+        """
+        with AwsShellContext(context=context, aws_session_manager=self.aws_session_manager) as shell_context:
+            shell_context.logger.info('Revert App Image')
+
+            resource = context.remote_endpoints[0]
+
+            data_holder = self.model_parser.convert_app_resource_to_deployed_app(resource)
+            resource_fullname = self.model_parser.get_connectd_resource_fullname(context)
+
+            instance_ami_id = self.instance_service.get_instance_by_id(shell_context.aws_api.ec2_session,
+                                                                       data_holder.vmdetails.uid).image_id
+
+            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [AppName]},
+                                                                                  {'Name': 'tag:Revert', 'Values': ['True']}])
+            if len(response['Images']) == 0:
+                raise Exception('No Revert image found.')
+            for image in response['Images']:
+                image_id = image['ImageId']
+
+                shell_context.aws_api.ec2_session.create_tags(
+                    Resources=[
+                        image_id, instance_ami_id,
+                    ],
+                    Tags=[
+                        {
+                            'Key': 'AppTemplateName',
+                            'Value': AppName,
+                        },
+                    ],
+                )
+                shell_context.aws_api.ec2_session.create_tags(
+                    Resources=[
+                        instance_ami_id,
+                    ],
+                    Tags=[
+                        {
+                            'Key': 'Revert',
+                            'Value': 'True',
+                        },
+                    ],
+                )
+                shell_context.aws_api.ec2_session.delete_tags(
+                    Resources=[
+                        image_id,
+                    ],
+                    Tags=[
+                        {
+                            'Key': 'Revert',
+                            'Value': 'True',
+                        },
+                    ],
+                )
 
             return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
 
