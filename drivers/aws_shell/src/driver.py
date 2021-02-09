@@ -107,6 +107,9 @@ class AWSShellDriver(ResourceDriverInterface):
     def create_app_image(self, context, cancellation_context, ports, delete_old_image='False'):
         return self.aws_shell.create_app_image(context, cancellation_context, delete_old_image == 'True')
 
+    def revert_app_image(self, context, cancellation_context, ports):
+        return self.aws_shell.revert_app_image(context, cancellation_context)
+
     # def remote_save_snapshot(self, context, cancellation_context, snapshot_prefix, ports):
     #     return self.aws_shell.remote_save_snapshot(context, cancellation_context, snapshot_prefix)
     #
