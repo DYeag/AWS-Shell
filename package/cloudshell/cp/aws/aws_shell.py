@@ -510,13 +510,12 @@ class AWSShell(object):
             try:
                 if delete_old_image:
                     response = shell_context.aws_api.ec2_client.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]}])
-
-                    shell_context.logger.info('Found ' + str(len(response['Images'])) + ' images. Number to save is ' + str(revertNum))
+                    shell_context.logger.debug('Found ' + str(len(response['Images'])) + 'tagged images. Number to save is ' + str(revertNum))
 
                     deleteNum = len(response['Images']) - revertNum
 
                     if deleteNum > 0:
-                        shell_context.logger.info('Deleting ' + str(deleteNum) + ' image(s).')
+                        shell_context.logger.debug('Deleting ' + str(deleteNum) + ' image(s).')
 
                         temparr = []
 
@@ -531,18 +530,18 @@ class AWSShell(object):
                             temparr.sort(key=lambda x: x[1])
 
                             for i in range(deleteNum):
-                                shell_context.logger.info('Attempting to delete ami: ' + temparr[0][0])
+                                shell_context.logger.debug('Attempting to delete ami: ' + temparr[0][0])
 
                                 self.delete_ami_operation.delete_ami(logger=shell_context.logger,
                                                                      ec2_client=shell_context.aws_api.ec2_client,
                                                                      instance_ami_id=temparr[0][0])
-                                shell_context.logger.info('Deleted ami: ' + temparr[0][0])
+                                shell_context.logger.debug('Deleted ami: ' + temparr[0][0])
                                 temparr.pop(0)
                         except Exception as e:
                             shell_context.logger.warning("Failed to delete old AMI(s): " + e.message)
-                            shell_context.logger.exception()
+                            shell_context.logger.exception(e.message)
                     else:
-                        shell_context.logger.info('No images to be deleted.')
+                        shell_context.logger.debug('No images to be deleted.')
             except Exception as e:
                 shell_context.logger.error("Failed to delete old AMI: " + e.message)
 
@@ -581,6 +580,7 @@ class AWSShell(object):
 
             try:
                 response = shell_context.aws_api.ec2_client.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]}])
+                shell_context.logger.debug('Found ' + str(len(response['Images'])) + ' images.')
 
                 if len(response['Images']) > 1:
                     temparr = []
@@ -594,9 +594,13 @@ class AWSShell(object):
 
                     temparr.sort(key=lambda x: x[1], reverse=True)
 
+                    shell_context.logger.debug('Attempting to delete ami: ' + temparr[0][0])
                     self.delete_ami_operation.delete_ami(logger=shell_context.logger,
                                                          ec2_client=shell_context.aws_api.ec2_client,
                                                          instance_ami_id=temparr[0][0])
+                    shell_context.logger.debug('Deleted ami: ' + temparr[0][0])
+
+                    shell_context.logger.debug('Attempting to revert to ami: ' + temparr[1][0])
                     revert_image = temparr[1][0]
                 else:
                     shell_context.logger.error("Failed to revert App: No image to revert to found.")
@@ -604,7 +608,7 @@ class AWSShell(object):
 
             except Exception as e:
                 shell_context.logger.error("Failed to revert App: " + e.message)
-                raise Exception('Failed to revert App. Check logs for error.')
+                raise Exception('Failed to revert App: ' + e.message)
 
             return json.dumps({"AWS EC2 Instance.AWS AMI Id": revert_image})
 
