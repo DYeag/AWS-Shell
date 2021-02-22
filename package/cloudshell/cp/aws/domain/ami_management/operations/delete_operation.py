@@ -82,14 +82,14 @@ class DeleteAMIOperation(object):
 
         return True
 
-    def delete_ami(self, logger, ec2_session, instance_ami_id):
+    def delete_ami(self, logger, ec2_client, instance_ami_id):
         """
         Will terminate the instance safely
         :param logging.Logger logger:
-        :param ec2_session: ec2 sessoion
+        :param ec2_client: ec2 client
         :param instance_id: the id if the instance
         :type instance_id: str
         :return:
         """
 
-        ec2_session.deregister_image(ImageId=instance_ami_id)
+        ec2_client.deregister_image(ImageId=instance_ami_id)
