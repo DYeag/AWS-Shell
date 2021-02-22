@@ -1,6 +1,7 @@
 import json
 
 import jsonpickle
+from datetime import datetime
 from botocore.exceptions import NoCredentialsError, ClientError
 
 from cloudshell.core.context.error_handling_context import ErrorHandlingContext
@@ -58,6 +59,9 @@ from cloudshell.cp.core import DriverRequestParser
 from cloudshell.cp.core.models import RequestActionBase, ActionResultBase, DeployApp, ConnectSubnet
 from cloudshell.cp.core.utils import single
 from cloudshell.cp.core.models import VmDetailsData
+
+
+DATEFORMAT = '%b %d %Y %H:%M:%S'
 
 
 class AWSShell(object):
