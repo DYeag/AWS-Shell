@@ -486,7 +486,7 @@ class AWSShell(object):
                                                   snapshot_name=snapshot_name,
                                                   tags=tags)
 
-    def create_app_image(self, context, cancellation_context, delete_old_image, app_template_name):
+    def create_app_image(self, context, cancellation_context, delete_old_image, app_template_name, revertNum):
         """
         :param context:
         :param cancellation_context:
