@@ -500,9 +500,6 @@ class AWSShell(object):
             data_holder = self.model_parser.convert_app_resource_to_deployed_app(resource)
             resource_fullname = self.model_parser.get_connectd_resource_fullname(context)
 
-            instance_ami_id = self.instance_service.get_instance_by_id(shell_context.aws_api.ec2_session,
-                                                                       data_holder.vmdetails.uid).image_id
-
             image_id = self.snapshot_operation.save(logger=shell_context.logger,
                                                     ec2_session=shell_context.aws_api.ec2_session,
                                                     instance_id=data_holder.vmdetails.uid,
@@ -510,45 +507,16 @@ class AWSShell(object):
                                                     snapshot_prefix="",
                                                     no_reboot=True)
 
-            # delete 2nd from most recent image, will have tags: AppTemplateName and Revert
-            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]},
-                                                                                  {'Name': 'tag:Revert', 'Values': ['True']}])
+            try:
+                if delete_old_image:
+                    response = shell_context.aws_api.ec2_client.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]}])
 
-            if delete_old_image:
-                for image in response['Images']:
-                    try:
-                        self.delete_ami_operation.delete_ami(logger=shell_context.logger,
-                                                             ec2_session=shell_context.aws_api.ec2_session,
-                                                             instance_ami_id=image['ImageId'])
-                    except Exception as e:
-                        shell_context.logger.warning("Failed to delete old AMI: " + e.message)
-                        shell_context.logger.exception()
+                    shell_context.logger.info('Found ' + str(len(response['Images'])) + ' images. Number to save is ' + str(revertNum))
 
-            # add tag for app template name
-            shell_context.aws_api.ec2_session.create_tags(
-                Resources=[
-                    image_id, instance_ami_id,
-                ],
-                Tags=[
-                    {
-                        'Key': 'AppTemplateName',
-                        'Value': app_template_name,
-                    },
-                ],
-            )
-            shell_context.aws_api.ec2_session.create_tags(
-                Resources=[
-                    instance_ami_id,
-                ],
-                Tags=[
-                    {
-                        'Key': 'Revert',
-                        'Value': 'True',
-                    },
-                ],
-            )
+                    deleteNum = len(response['Images']) - revertNum
 
-            return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
+                    if deleteNum > 0:
+                        shell_context.logger.info('Deleting ' + str(deleteNum) + ' image(s).')
 
     def revert_app_image(self, context, cancellation_context, app_template_name):
         """
