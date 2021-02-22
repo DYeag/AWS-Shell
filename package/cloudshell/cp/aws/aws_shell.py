@@ -518,6 +518,56 @@ class AWSShell(object):
                     if deleteNum > 0:
                         shell_context.logger.info('Deleting ' + str(deleteNum) + ' image(s).')
 
+                        temparr = []
+
+                        try:
+                            for image in response['Images']:
+                                for tag in image['Tags']:
+                                    if tag['Key'] == 'AppImageCreation':
+                                        appImageCreation = datetime.strptime(tag['Value'], DATEFORMAT)
+
+                                temparr.append((image['ImageId'], appImageCreation))
+
+                            temparr.sort(key=lambda x: x[1])
+
+                            for i in range(deleteNum):
+                                shell_context.logger.info('Attempting to delete ami: ' + temparr[0][0])
+
+                                self.delete_ami_operation.delete_ami(logger=shell_context.logger,
+                                                                     ec2_client=shell_context.aws_api.ec2_client,
+                                                                     instance_ami_id=temparr[0][0])
+                                shell_context.logger.info('Deleted ami: ' + temparr[0][0])
+                                temparr.pop(0)
+                        except Exception as e:
+                            shell_context.logger.warning("Failed to delete old AMI(s): " + e.message)
+                            shell_context.logger.exception()
+                    else:
+                        shell_context.logger.info('No images to be deleted.')
+            except Exception as e:
+                shell_context.logger.error("Failed to delete old AMI: " + e.message)
+
+            # add tag for app template name
+            try:
+                shell_context.aws_api.ec2_client.create_tags(
+                    Resources=[
+                        image_id,
+                    ],
+                    Tags=[
+                        {
+                            'Key': 'AppTemplateName',
+                            'Value': app_template_name,
+                        },
+                        {
+                            'Key': 'AppImageCreation',
+                            'Value': datetime.now().strftime(DATEFORMAT),
+                        },
+                    ],
+                )
+            except Exception as e:
+                shell_context.logger.error("Failed to Tag AMI: " + image_id + ': ' + e.message)
+
+            return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
+
     def revert_app_image(self, context, cancellation_context, app_template_name):
         """
         :param context:
@@ -527,56 +577,36 @@ class AWSShell(object):
         with AwsShellContext(context=context, aws_session_manager=self.aws_session_manager) as shell_context:
             shell_context.logger.info('Revert App Image')
 
-            resource = context.remote_endpoints[0]
+            revert_image = ''
 
-            data_holder = self.model_parser.convert_app_resource_to_deployed_app(resource)
-            resource_fullname = self.model_parser.get_connectd_resource_fullname(context)
+            try:
+                response = shell_context.aws_api.ec2_client.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]}])
 
-            instance_ami_id = self.instance_service.get_instance_by_id(shell_context.aws_api.ec2_session,
-                                                                       data_holder.vmdetails.uid).image_id
+                if len(response['Images']) > 1:
+                    temparr = []
 
-            response = shell_context.aws_api.ec2_session.describe_images(Filters=[{'Name': 'tag:AppTemplateName', 'Values': [app_template_name]},
-                                                                                  {'Name': 'tag:Revert', 'Values': ['True']}])
-            if len(response['Images']) == 0:
-                raise Exception('No Revert image found.')
-            for image in response['Images']:
-                image_id = image['ImageId']
+                    for image in response['Images']:
+                        for tag in image['Tags']:
+                            if tag['Key'] == 'AppImageCreation':
+                                appImageCreation = datetime.strptime(tag['Value'], DATEFORMAT)
 
-                shell_context.aws_api.ec2_session.create_tags(
-                    Resources=[
-                        image_id, instance_ami_id,
-                    ],
-                    Tags=[
-                        {
-                            'Key': 'AppTemplateName',
-                            'Value': app_template_name,
-                        },
-                    ],
-                )
-                shell_context.aws_api.ec2_session.create_tags(
-                    Resources=[
-                        instance_ami_id,
-                    ],
-                    Tags=[
-                        {
-                            'Key': 'Revert',
-                            'Value': 'True',
-                        },
-                    ],
-                )
-                shell_context.aws_api.ec2_session.delete_tags(
-                    Resources=[
-                        image_id,
-                    ],
-                    Tags=[
-                        {
-                            'Key': 'Revert',
-                            'Value': 'True',
-                        },
-                    ],
-                )
+                        temparr.append((image['ImageId'], appImageCreation))
 
-            return json.dumps({"AWS EC2 Instance.AWS AMI Id": image_id})
+                    temparr.sort(key=lambda x: x[1], reverse=True)
+
+                    self.delete_ami_operation.delete_ami(logger=shell_context.logger,
+                                                         ec2_client=shell_context.aws_api.ec2_client,
+                                                         instance_ami_id=temparr[0][0])
+                    revert_image = temparr[1][0]
+                else:
+                    shell_context.logger.error("Failed to revert App: No image to revert to found.")
+                    raise Exception('Failed to revert App. No image to revert to found.')
+
+            except Exception as e:
+                shell_context.logger.error("Failed to revert App: " + e.message)
+                raise Exception('Failed to revert App. Check logs for error.')
+
+            return json.dumps({"AWS EC2 Instance.AWS AMI Id": revert_image})
 
     def add_custom_tags(self, context, request):
         """
